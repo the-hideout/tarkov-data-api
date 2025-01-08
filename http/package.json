@@ -4,7 +4,7 @@
     "description": "Tarkov Data API",
     "main": "index.mjs",
     "engines": {
-        "node": ">=20.11.0"
+        "node": ">=20.15.1"
     },
     "scripts": {
         "test": "echo \"Error: no test specified\"",
@@ -19,6 +19,9 @@
     "dependencies": {
         "@graphql-tools/merge": "9.0.8",
         "@graphql-tools/schema": "10.0.7",
+        "@sentry/cli": "^2.32.2",
+        "@sentry/node": "^8.18.0",
+        "@sentry/profiling-node": "^8.18.0",
         "graphql-yoga": "^5.8.0",
         "dotenv": "^16.4.5",
         "uuid": "^11.0.2"

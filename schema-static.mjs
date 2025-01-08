@@ -1383,6 +1383,7 @@ type Query {
   historicalItemPrices(id: ID!, days: Int, lang: LanguageCode, gameMode: GameMode, limit: Int, offset: Int): [historicalPricePoint]!
   item(id: ID, normalizedName: String, lang: LanguageCode, gameMode: GameMode): Item
   items(ids: [ID], name: String, names: [String], type: ItemType, types: [ItemType], categoryNames: [ItemCategoryName], handbookCategoryNames: [HandbookCategoryName] bsgCategoryId: String, bsgCategoryIds: [String], bsgCategory: String, lang: LanguageCode, gameMode: GameMode, limit: Int, offset: Int): [Item]!
+  itemPrices(id: ID!, limit: Int, offset: Int): [historicalPricePoint]!
   itemCategories(lang: LanguageCode, limit: Int, offset: Int): [ItemCategory]!
   goonReports(lang: LanguageCode, gameMode: GameMode, limit: Int, ofset: Int): [GoonReport]!
   handbookCategories(lang: LanguageCode, limit: Int, offset: Int): [ItemCategory]!

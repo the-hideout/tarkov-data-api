@@ -12,20 +12,25 @@ permissions:
 
 jobs:
   test:
+    environment: secrets
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: setup node
+      - name: Setup Node Environment
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: npm
 
-      - run: npm ci
+      - name: Install Dependencies
+        run: |
+          npm ci
+          cd http && npm ci
 
-      - name: test
+      - name: Execute Tests
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+          CACHE_BASIC_AUTH: ${{ secrets.CACHE_BASIC_AUTH }}
         run: script/test

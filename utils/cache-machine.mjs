@@ -1,5 +1,7 @@
 import fetchWithTimeout from './fetch-with-timeout.mjs';
 
+import * as Sentry from '@sentry/node';
+
 // cache url
 const cacheUrl = 'https://cache.tarkov.dev'
 
@@ -132,6 +134,10 @@ const cacheMachine = {
                 headers: {
                     'content-type': 'application/json;charset=UTF-8',
                     'Authorization': `Basic ${env.CACHE_BASIC_AUTH}`
+                    // Spans don't appear to be propagating properly through the graphql server from the http server :(
+                    // This might be because they are two distinct node packages
+                    //'sentry-trace': Sentry.spanToTraceHeader(Sentry.getActiveSpan()),
+                    //'baggage': Sentry.spanToBaggageHeader(Sentry.getActiveSpan()),
                 },
                 timeout: 10000,
             });

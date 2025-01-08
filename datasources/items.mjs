@@ -170,7 +170,7 @@ class ItemsAPI extends WorkerKV {
         if (!items) {
             items = Object.values(cache.Item);
         }
-        const categories = (await this.getCategories(context, info)).filter(cat => names.includes(cat.enumName));
+        const categories = (await context.data.worker.handbook.getCategories(context, info)).filter(cat => names.includes(cat.enumName));
         return items.filter((item) => {
             return item.categories.some(catId => categories.some(cat => cat.id === catId));
         });
@@ -181,7 +181,7 @@ class ItemsAPI extends WorkerKV {
         if (!items) {
             items = Object.values(cache.Item);
         }
-        const categories = (await this.getHandbookCategories(context, info)).filter(cat => names.includes(cat.enumName));
+        const categories = (await context.data.worker.handbook.getHandbookCategories(context, info)).filter(cat => names.includes(cat.enumName));
         return items.filter((item) => {
             return item.handbookCategories.some(catId => categories.some(cat => cat.id === catId));
         });
@@ -216,84 +216,9 @@ class ItemsAPI extends WorkerKV {
         });
     }
 
-    async getCategory(context, info, id) {
-        const { cache } = await this.getCache(context, info);
-        return cache.ItemCategory[id] || cache.HandbookCategory[id];
-    }
-
-    async getTopCategory(context, info, id) {
-        const cat = await this.getCategory(context, info, id);
-        if (cat && cat.parent_id) return this.getTopCategory(context, info, cat.parent_id);
-        return cat;
-    }
-
-    async getCategories(context, info) {
-        const { cache } = await this.getCache(context, info);
-        if (!cache) {
-            return Promise.reject(new Error('Item cache is empty'));
-        }
-        const categories = [];
-        for (const id in cache.ItemCategory) {
-            categories.push(cache.ItemCategory[id]);
-        }
-        return categories;
-    }
-
-    async getCategoriesEnum(context, info) {
-        const cats = await this.getCategories(context, info);
-        const map = {};
-        for (const id in cats) {
-            map[cats[id].enumName] = cats[id];
-        }
-        return map;
-    }
-
-    async getHandbookCategory(context, info, id) {
-        const { cache } = await this.getCache(context, info);
-        return cache.HandbookCategory[id];
-    }
-
-    async getHandbookCategories(context, info) {
-        const { cache } = await this.getCache(context, info);
-        if (!cache) {
-            return Promise.reject(new Error('Item cache is empty'));
-        }
-        return Object.values(cache.HandbookCategory);
-    }
-
     async getFleaMarket(context, info) {
         const { cache } = await this.getCache(context, info);
         return cache.FleaMarket;
-    }
-
-    async getArmorMaterials(context, info) {
-        const { cache } = await this.getCache(context, info);
-        return Object.values(cache.ArmorMaterial).sort();
-    }
-
-    async getArmorMaterial(context, info, matKey) {
-        const { cache } = await this.getCache(context, info);
-        return cache.ArmorMaterial[matKey];
-    }
-
-    async getMasterings(context, info) {
-        const { cache } = await this.getCache(context, info);
-        return cache.Mastering;
-    }
-
-    async getMastering(context, info, mastId) {
-        const { cache } = await this.getCache(context, info);
-        return cache.Mastering.find(m => m.id === mastId);
-    }
-
-    async getSkills(context, info) {
-        const { cache } = await this.getCache(context, info);
-        return cache.Skill;
-    }
-
-    async getSkill(context, info, skillId) {
-        const { cache } = await this.getCache(context, info);
-        return cache.Skill.find(s => s.id === skillId);
     }
 
     async getAmmoList(context, info) {
@@ -301,22 +226,13 @@ class ItemsAPI extends WorkerKV {
             // ignore bb
             return ammoItems.filter(item => item.id !== '6241c316234b593b5676b637');
         });
+        const itemProperties = await context.data.worker.handbook.getAllItemProperties(context, info);
         return allAmmo.map(item => {
             return {
                 ...item,
-                ...item.properties
+                ...itemProperties[item.id],
             };
         });
-    }
-
-    async getPlayerLevels(context, info) {
-        const { cache } = await this.getCache(context, info);
-        return cache.PlayerLevel;
-    }
-
-    async getTypes(context, info) {
-        const { cache } = await this.getCache(context, info);
-        return cache.ItemType;
     }
 }
 

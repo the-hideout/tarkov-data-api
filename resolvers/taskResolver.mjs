@@ -61,7 +61,7 @@ export default {
     },
     SkillLevel: {
         skill(data, args, context, info) {
-            return context.data.worker.item.getSkill(context, info, data.name);
+            return context.data.worker.handbook.getSkill(context, info, data.name);
         },
         name(data, args, context, info) {
             return context.data.worker.task.getLocale(data.name, context, info);
@@ -155,7 +155,7 @@ export default {
         },
         containsCategory(data, args, context, info) {
             return data.containsCategory.map((cat) => {
-                return context.data.worker.item.getCategory(context, info, cat.id);
+                return context.data.worker.handbook.getCategory(context, info, cat.id);
             });
         },
         containsOne(data, args, context, info) {
