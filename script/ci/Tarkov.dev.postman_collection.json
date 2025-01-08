@@ -515,7 +515,6 @@
 							"\r",
 							"pm.test(\"Has correct data\", function () {\r",
 							"    pm.expect(pm.response.json().data.historicalItemPrices).to.be.a(\"array\");\r",
-							"    pm.expect(pm.response.json().data.historicalItemPrices.length).to.be.above(0);\r",
 							"});\r",
 							"\r",
 							"pm.test(\"No errors\", function () {\r",

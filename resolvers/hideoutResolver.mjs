@@ -50,7 +50,7 @@ export default {
             return context.data.worker.hideout.getLocale(data.name, context, info);
         },
         skill(data, args, context, info) {
-            return context.data.worker.item.getSkill(context, info, data.name);
+            return context.data.worker.handbook.getSkill(context, info, data.name);
         },
     },
     HideoutModule: {
