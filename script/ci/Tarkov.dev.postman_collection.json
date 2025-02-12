@@ -65,9 +65,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -110,9 +110,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -186,9 +186,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -263,9 +263,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -318,9 +318,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -362,9 +362,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -406,9 +406,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -450,9 +450,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -494,9 +494,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -537,9 +537,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -581,9 +581,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -671,9 +671,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -718,9 +718,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -773,9 +773,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{tarko.dev.api}}",
+					"raw": "{{tarkov.dev.api}}",
 					"host": [
-						"{{tarko.dev.api}}"
+						"{{tarkov.dev.api}}"
 					]
 				}
 			},
@@ -788,7 +788,7 @@
 			"script": {
 				"type": "text/javascript",
 				"exec": [
-					"// pm.environment.set(\"tarko.dev.api\", \"http://127.0.0.1:8787/graphql\");"
+					"// pm.environment.set(\"tarkov.dev.api\", \"http://127.0.0.1:8788/graphql\");"
 				]
 			}
 		},
@@ -804,8 +804,8 @@
 	],
 	"variable": [
 		{
-			"key": "tarko.dev.api",
-			"value": "http://localhost:8787/graphql"
+			"key": "tarkov.dev.api",
+			"value": "http://localhost:8788/graphql"
 		},
 		{
 			"key": "itemFragment",

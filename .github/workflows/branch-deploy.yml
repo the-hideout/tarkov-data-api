@@ -4,13 +4,25 @@ on:
   issue_comment:
     types: [ created ]
 
-# Permissions needed for reacting and adding comments for IssueOps commands
+
 permissions:
+  # Permissions needed for reacting and adding comments for IssueOps commands
   pull-requests: write
   deployments: write
   contents: write
   checks: read
-  statuses: read
+  # Permissions needed for building and deploying docker images
+  packages: write
+  # contents: read
+  attestations: write
+  id-token: write
+
+env:
+  # Environment variables used by docker build and push
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DEFAULT_PORT: 8788
+  IMAGE_TAG: ghcr.io/${{ github.repository }}:pr-${{ github.event.issue.number }}
 
 jobs:
   deploy:
@@ -19,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: github/branch-deploy@v10
+      - uses: github/branch-deploy@v9.9.1
         id: branch-deploy
         with:
           admins: the-hideout/core-contributors
@@ -27,33 +39,85 @@ jobs:
           environment_targets: production,development
           environment_urls: production|https://api.tarkov.dev/graphql,development|https://dev-api.tarkov.dev/graphql
           sticky_locks: "true"
+          skip_reviews: "development"
 
       - name: checkout
         if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.branch-deploy.outputs.sha }}
+          ref: ${{ steps.branch-deploy.outputs.ref }}
 
-      - name: setup node
+      - name: Log in to the Container registry
         if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
-        uses: actions/setup-node@v4
+        uses: docker/login-action@v3.2.0
         with:
-          node-version-file: .node-version
-          cache: npm
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
+      - name: Extract metadata (tags, labels) for Docker
         if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
-        run: npm ci
-
-      - name: Publish - Development
-        if: ${{ steps.branch-deploy.outputs.environment == 'development' &&
-          steps.branch-deploy.outputs.noop != 'true' &&
-          steps.branch-deploy.outputs.continue == 'true' }}
-        uses: cloudflare/wrangler-action@6d58852c35a27e6034745c5d0bc373d739014f7f # pin@3.13.0
+        id: docker-meta
+        uses: docker/metadata-action@v5.5.1
         with:
-          wranglerVersion: '2.17.0'
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          environment: "development"
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # In theory, we could build the container as soon as a commit is pushed, rather than waiting until just before deployment.
+      # This would make deployments faster, but it does mean we would have images in our repository that may not have been reviewed.
+      - name: Build and push Docker image to registry
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
+        id: docker-push
+        uses: docker/build-push-action@v6.3.0
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_TAG }}
+          labels: ${{ steps.docker-meta.outputs.labels }}
+      
+      - name: Generate artifact attestation
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.docker-push.outputs.digest }}
+          push-to-registry: true
+      
+      # Setup SSH agent
+      - name: Setup Deployment Agent
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' &&
+          steps.branch-deploy.outputs.noop != 'true' }}
+        id: setup-ssh
+        env:
+          # Sets up the ssh agent to be used in future steps for connecting to the deployment environment
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          # Sets the ssh host address based on the desired environment if they differ, falling back to SSH_HOST
+          ENV_HOST: ${{ steps.branch-deploy.outputs.environment == 'production' && secrets.SSH_HOST_PROD || secrets.SSH_HOST_DEV || secrets.SSH_HOST }}
+        run: |
+          mkdir -p /home/runner/.ssh
+          ssh-keyscan $ENV_HOST >> /home/runner/.ssh/known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /home/runner/.ssh/api-server-key
+          chmod 600 /home/runner/.ssh/api-server-key
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+          ssh-add /home/runner/.ssh/api-server-key
+          echo "ssh-host=$ENV_HOST" >> $GITHUB_OUTPUT
+
+      - name: Deploy
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' &&
+          steps.branch-deploy.outputs.noop != 'true'}}
+        env:
+            # Uses the ssh agent set up in the previous step to connect to the deployment environment
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+            # Allows for the API to be deployed to the same system on different ports based on the environment
+            ENV_PORT: ${{ steps.branch-deploy.outputs.environment == 'production' && '80' || env.DEFAULT_PORT }}
+            # The name of the container to be run
+            CONTAINER_NAME: tarkov-api-${{ steps.branch-deploy.outputs.environment }}
+        run: |
+          # Stop and remove any existing container matching our container name variable
+          ssh ${{ secrets.SSH_USER }}@${{ steps.setup-ssh.outputs.ssh-host }} "docker rm -f ${{ env.CONTAINER_NAME }} || true"
+          # Pull the latest version of the image published to the registry
+          ssh ${{ secrets.SSH_USER }}@${{ steps.setup-ssh.outputs.ssh-host }} "docker pull ${{ env.IMAGE_TAG }}"
+          # Run the image as a container
+          ssh ${{ secrets.SSH_USER }}@${{ steps.setup-ssh.outputs.ssh-host }} "docker run -d --name ${{ env.CONTAINER_NAME }} --restart unless-stopped -p ${{ env.ENV_PORT }}:${{ env.DEFAULT_PORT }} -e ENVIRONMENT='${{ steps.branch-deploy.outputs.environment }}' -e SENTRY_ENV='${{ steps.branch-deploy.outputs.environment }}' -e SENTRY_DSN='${{ secrets.SENTRY_DSN || '' }}' -e SENTRY_TRACE_RATE=${{ vars.SENTRY_TRACE_RATE || 0 }} -e SENTRY_PROFILE_RATE=${{ vars.SENTRY_PROFILE_RATE || 0 }} -e DEPLOY_REF='${{ github.event.pull_request.head.sha || github.sha }}' -e CLOUDFLARE_TOKEN='${{ secrets.CLOUDFLARE_TOKEN }}' -e CACHE_BASIC_AUTH='${{ secrets.CACHE_BASIC_AUTH }}' ${{ env.IMAGE_TAG }}"
 
       # Post comment on PR with development deploy info
       - uses: GrantBirki/comment@v2.1.0
@@ -71,15 +135,6 @@ jobs:
             - Playground: [dev-api.tarkov.dev](https://dev-api.tarkov.dev)
 
             > Pusher: @${{ github.actor }}, Action: `${{ github.event_name }}`, Workflow: `${{ github.workflow }}`;
-
-      - name: Publish - Production
-        if: ${{ steps.branch-deploy.outputs.continue == 'true' &&
-          steps.branch-deploy.outputs.noop != 'true' &&
-          steps.branch-deploy.outputs.environment == 'production' }}
-        uses: cloudflare/wrangler-action@6d58852c35a27e6034745c5d0bc373d739014f7f # pin@3.13.0
-        with:
-          wranglerVersion: '2.17.0'
-          apiToken: ${{ secrets.CF_API_TOKEN }}
 
       # Post comment on PR with production deploy info
       - uses: GrantBirki/comment@v2.1.0

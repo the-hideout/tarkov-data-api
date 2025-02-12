@@ -6,12 +6,12 @@ START=1
 END=60
 
 # Start the GraphQL server in the background
-CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN npm run ci &
+CLOUDFLARE_API_TOKEN=$CLOUDFLARE_TOKEN CACHE_BASIC_AUTH=$CACHE_BASIC_AUTH cd http && npm run start &
 
 for (( c=$START; c<=$END; c++ ))
 do
     echo "⏳ Checking for GraphQL server to come online - Attempt: #$c"
-    curl -s http://localhost:8787/ > /dev/null
+    curl -s http://localhost:8788/ > /dev/null
     if [ $? -eq 0 ]; then
         echo "✔️ GraphQL server is up"
         newman run script/ci/Tarkov.dev.postman_collection.json

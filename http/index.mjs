@@ -1,6 +1,8 @@
-import { createServer } from 'node:http';
 import cluster from 'node:cluster';
 import { availableParallelism } from 'node:os';
+import * as Sentry from "@sentry/node";
+import "./instrument.mjs";
+import { createServer } from 'node:http';
 
 import 'dotenv/config';
 
@@ -65,6 +67,8 @@ if (cluster.isPrimary && workerCount > 0) {
     };
 
     cluster.on('message', async (worker, message) => {
+        // Add worker message span
+        const rcvWorkerMsgSpan = Sentry.startInactiveSpan({ name: "Receive worker message" });
         //console.log(`message from worker ${id}:`, message);
         let response = false;
         if (message.action === 'getKv') {
@@ -119,6 +123,8 @@ if (cluster.isPrimary && workerCount > 0) {
                 }
             }
         }
+        // End the span
+        rcvWorkerMsgSpan.end();
     });
 
     cluster.on('exit', function (worker, code, signal) {

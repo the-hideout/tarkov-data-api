@@ -14,6 +14,16 @@ This is a simple run down of how review / deploy a pull request.
 
 > It should be noted that the approval step can come before the deployment steps if that suits the situation better.
 
+## Required Secrets
+
+To deploy the API, you will need the following secrets. To deploy via GitHub Actions, you will need to add these secrets to the `secrets` and `production` environments in the repository settings.
+
+* `CLOUDFLARE_TOKEN` - The Cloudflare API token used for accessing the KV store until such a time as we have an independent database for the new express hosted API.
+* `CACHE_BASIC_AUTH` - The basic auth string to use with the cache server.
+* `SSH_HOST` - The host (ip or DNS record) of the server to deploy the Docker container.
+* `SSH_USER` - The user to use when connecting to the deployment server.
+* `SSH_PRIVATE_KEY` - The private key to use when connecting to the deployment server.
+
 ## CI Failures
 
 A known issue (I am not sure of the cause) for CI failures is when dependabot opens a pull request. For some very strange reason, the necessary secrets are not injected into the Actions workflow when the pull request comes from dependabot. This causes the wrangler environment in CI to fail because it lacks the proper credentials to authenticate with Cloudflare.

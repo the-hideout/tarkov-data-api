@@ -7,18 +7,66 @@ on:
 
 permissions:
   contents: read
+  # Permissions needed for building and deploying docker images
+  packages: write
+  # contents: read
+  attestations: write
+  id-token: write
+
+env:
+  # Environment variables used by docker build and push
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DEFAULT_PORT: 8788
+  IMAGE_LATEST_TAG: ghcr.io/${{ github.repository }}:latest
+  IMAGE_MAIN_TAG: ghcr.io/${{ github.repository }}:main
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: docker-meta
+        uses: docker/metadata-action@v5.5.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image to registry
+        id: docker-push
+        uses: docker/build-push-action@v6.3.0
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_LATEST_TAG }},${{ env.IMAGE_MAIN_TAG }}
+          labels: ${{ steps.docker-meta.outputs.labels }}
+      
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.docker-push.outputs.digest }}
+          push-to-registry: true
+
   deployment-check:
     runs-on: ubuntu-latest
     outputs: # set outputs for use in downstream jobs
       continue: ${{ steps.deployment-check.outputs.continue }}
-      sha: ${{ steps.deployment-check.outputs.sha }}
 
     steps:
       # https://github.com/github/branch-deploy/blob/d3c24bd92505e623615b75ffdfac5ed5259adbdb/docs/merge-commit-strategy.md
       - name: deployment check
-        uses: github/branch-deploy@v10
+        uses: github/branch-deploy@v9.9.1
         id: deployment-check
         with:
           merge_deploy_mode: "true"
@@ -26,27 +74,45 @@ jobs:
 
   deploy:
     if: ${{ needs.deployment-check.outputs.continue == 'true' }}
-    needs: deployment-check
+    needs: 
+      - deployment-check
+      - build
     environment: production
     runs-on: ubuntu-latest
 
     steps:
       - name: checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.deployment-check.outputs.sha }}
 
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: npm
+      # Setup SSH agent
+      - name: Setup Deployment Agent
+        id: setup-ssh
+        env:
+          # Sets up the ssh agent to be used in future steps for connecting to the deployment environment
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          # Sets the ssh host address based on the desired environment if they differ, falling back to SSH_HOST
+          ENV_HOST: ${{ secrets.SSH_HOST_PROD || secrets.SSH_HOST }}
+        run: |
+          mkdir -p /home/runner/.ssh
+          ssh-keyscan $ENV_HOST >> /home/runner/.ssh/known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /home/runner/.ssh/api-server-key
+          chmod 600 /home/runner/.ssh/api-server-key
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+          ssh-add /home/runner/.ssh/api-server-key
+          echo "ssh-host=$ENV_HOST" >> $GITHUB_OUTPUT
 
-      - name: install dependencies
-        run: npm ci
-
-      - name: Publish - Production
-        uses: cloudflare/wrangler-action@6d58852c35a27e6034745c5d0bc373d739014f7f # pin@3.13.0
-        with:
-          wranglerVersion: '2.17.0'
-          apiToken: ${{ secrets.CF_API_TOKEN }}
+      - name: Deploy
+        env:
+            # Uses the ssh agent set up in the previous step to connect to the deployment environment
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+            # Allows for the API to be deployed to the same system on different ports based on the environment
+            ENV_PORT: '80'
+            # The name of the container to be run
+            CONTAINER_NAME: tarkov-api-production
+        run: |
+          # Stop and remove any existing container matching our container name variable
+          ssh ${{ secrets.SSH_USER }}@${{ steps.setup-ssh.outputs.ssh-host }} "docker rm -f ${{ env.CONTAINER_NAME }} || true"
+          # Pull the latest version of the image published to the registry
+          ssh ${{ secrets.SSH_USER }}@${{ steps.setup-ssh.outputs.ssh-host }} "docker pull ${{ env.IMAGE_MAIN_TAG }}"
+          # Run the image as a container
+          ssh ${{ secrets.SSH_USER }}@${{ steps.setup-ssh.outputs.ssh-host }} "docker run -d --name ${{ env.CONTAINER_NAME }} --restart unless-stopped -p ${{ env.ENV_PORT }}:${{ env.DEFAULT_PORT }} -e ENVIRONMENT='production' -e SENTRY_ENV='production' -e SENTRY_DSN='${{ secrets.SENTRY_DSN || '' }}' -e SENTRY_TRACE_RATE=${{ vars.SENTRY_TRACE_RATE || 0 }} -e SENTRY_PROFILE_RATE=${{ vars.SENTRY_PROFILE_RATE || 0 }} -e DEPLOY_REF='${{ github.sha }}'  -e CLOUDFLARE_TOKEN='${{ secrets.CLOUDFLARE_TOKEN }}' -e CACHE_BASIC_AUTH='${{ secrets.CACHE_BASIC_AUTH }}' ${{ env.IMAGE_MAIN_TAG }}"
