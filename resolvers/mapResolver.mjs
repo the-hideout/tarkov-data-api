@@ -77,6 +77,11 @@ export default {
             return context.data.worker.map.getLootContainer(context, info, data.lootContainer);
         },
     },
+    LootLoosePosition: {
+        items(data, args, context, info) {
+            return context.data.worker.item.getItemsByIDs(context, info, data.items);
+        },
+    },
     Map: {
         accessKeys(data, args, context, info) {
             return context.data.worker.item.getItemsByIDs(context, info, data.accessKeys);
